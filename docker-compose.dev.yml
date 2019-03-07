@@ -1,0 +1,132 @@
+---
+version: "3.7"
+
+networks:
+  internal:
+    driver: overlay
+  public:
+    driver: bridge
+
+secrets:
+  postgres_password:
+    file: ./secrets/postgres/password.txt
+  rabbitmq_erlang_cookie:
+    file: ./secrets/rabbitmq/.erlang.cookie
+  rabbitmq_password:
+    file: ./secrets/rabbitmq/password.txt
+
+services:
+  elasticsearch:
+    build:
+      context: ./docker/elasticsearch
+      dockerfile: dev.Dockerfile
+    networks:
+    - internal
+    ports:
+    - "9200"
+    - "9300"
+    volumes:
+    - elasticsearch_data:/usr/share/elasticsearch/data:rw
+
+  graphql:
+    build:
+      context: ./docker/graphql
+      dockerfile: dev.Dockerfile
+    depends_on:
+    - elasticsearch
+    - migration
+    - postgres
+    - rabbitmq
+    - redis
+    env_file:
+    - ./environment/postgres.env
+    - ./environment/rabbitmq.env
+    networks:
+    - internal
+    ports:
+    - "3000"
+    - "9229:9229"
+    secrets:
+    - postgres_password
+    - rabbitmq_password
+
+  migration:
+    build:
+      context: ./docker/migration
+      dockerfile: dev.Dockerfile
+    depends_on:
+    - elasticsearch
+    - postgres
+    - rabbitmq
+    - redis
+    env_file:
+    - ./environment/postgres.env
+    - ./environment/rabbitmq.env
+    networks:
+    - internal
+    secrets:
+    - postgres_password
+    - rabbitmq_password
+
+  nginx:
+    build:
+      context: ./docker/nginx
+      dockerfile: dev.Dockerfile
+    depends_on:
+    - graphql
+    networks:
+    - internal
+    - public
+    ports:
+    - "8080:80"
+    - "443"
+
+  postgres:
+    build:
+      context: ./docker/postgres
+      dockerfile: dev.Dockerfile
+    env_file:
+    - ./environment/postgres.env
+    networks:
+    - internal
+    ports:
+    - "5432"
+    secrets:
+    - postgres_password
+    volumes:
+    - postgres_data:/var/lib/postgresql/data:rw
+
+  rabbitmq:
+    build:
+      context: ./docker/rabbitmq
+      dockerfile: dev.Dockerfile
+    env_file:
+    - ./environment/rabbitmq.env
+    networks:
+    - internal
+    ports:
+    - "5672"
+    - "15672:15672"
+    restart: always
+    secrets:
+    - rabbitmq_password
+    - rabbitmq_erlang_cookie
+    volumes:
+    - rabbitmq_data:/var/lib/rabbitmq/mnesia:rw
+
+  redis:
+    build:
+      context: ./docker/redis
+      dockerfile: dev.Dockerfile
+    networks:
+    - internal
+    ports:
+    - "6379"
+    volumes:
+    - redis_data:/data:rw
+
+volumes:
+  elasticsearch_data:
+  postgres_data:
+  rabbitmq_data:
+  redis_data:

@@ -1,0 +1,4 @@
+node_modules/
+/secrets/**/*.txt
+/secrets/*
+!/secrets/**/*.gpg
