@@ -9,11 +9,11 @@ networks:
 
 secrets:
   postgres_password:
-    file: ./secrets/postgres/password.txt
+    file: ./secrets/postgres/POSTGRES_PASSWORD
   rabbitmq_erlang_cookie:
-    file: ./secrets/rabbitmq/.erlang.cookie
+    file: ./secrets/rabbitmq/RABBITMQ_ERLANG_COOKIE
   rabbitmq_password:
-    file: ./secrets/rabbitmq/password.txt
+    file: ./secrets/rabbitmq/RABBITMQ_PASSWORD
 
 services:
   elasticsearch:
