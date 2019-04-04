@@ -1,0 +1,8 @@
+#!/bin/bash -e
+
+DIR="$(cd -P "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" && pwd)"
+cd "$DIR"
+
+export PROJECT_ROOT="$(realpath "$DIR")"
+
+exec docker-compose -f docker-compose.dev.yml "$@"

@@ -1,5 +1,16 @@
-import pg from 'pg';
-import fs from 'fs';
+import * as pg from 'pg';
+import * as fs from 'fs';
+
+declare global {
+    namespace NodeJS {
+        interface ProcessEnv {
+            POSTGRES_DB: string;
+            POSTGRES_HOST: string;
+            POSTGRES_PASSWORD_FILE: string;
+            POSTGRES_USER: string;
+        }
+    }
+}
 
 const POSTGRES_PASSWORD = fs.readFileSync(process.env.POSTGRES_PASSWORD_FILE).toString();
 

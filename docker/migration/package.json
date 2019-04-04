@@ -1,19 +1,27 @@
 {
     "devDependencies": {
-        "@types/amqplib": "0.5.10",
-        "@types/node": "11.10.4",
-        "@types/pg": "7.4.13",
-        "@types/redis": "2.8.10"
+        "@types/amqplib": "^0.5.11",
+        "@types/jest": "^24.0.11",
+        "@types/node": "^11.13.0",
+        "@types/pg": "^7.4.14",
+        "@types/redis": "^2.8.12",
+        "jest": "^24.7.0",
+        "ts-jest": "^24.0.1"
     },
     "dependencies": {
-        "amqplib": "0.5.3",
-        "pg": "7.8.1",
-        "redis": "2.8.0",
-        "tslib": "1.9.3",
-        "typescript": "3.3.3333"
+        "amqplib": "^0.5.3",
+        "pg": "^7.9.0",
+        "redis": "^2.8.0",
+        "tslib": "^1.9.3",
+        "ts-node": "^8.0.3",
+        "typescript": "^3.4.1"
     },
     "license": "BSD-3-Clause",
     "name": "docker-app-migration",
     "private": true,
+    "scripts": {
+        "build": "tsc -p tsconfig.build.json",
+        "start": "ts-node runner.js"
+    },
     "version": "1.0.1"
 }

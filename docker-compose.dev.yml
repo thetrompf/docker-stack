@@ -67,6 +67,8 @@ services:
     secrets:
     - postgres_password
     - rabbitmq_password
+    volumes:
+    - "${PROJECT_ROOT}/docker/migration/migrations:/data:ro"
 
   nginx:
     build:

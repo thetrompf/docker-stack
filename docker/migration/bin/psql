@@ -1,0 +1,8 @@
+#!/bin/sh -e
+
+if ! type psql &> /dev/null; then
+    apk add --no-cache postgresql-client &> /dev/null
+fi
+
+export PGPASSWORD="$(cat "$POSTGRES_PASSWORD_FILE")"
+exec psql -h "$POSTGRES_HOST" -U "$POSTGRES_USER" -p "$POSTGRES_PORT" -d "$POSTGRES_DB" "$@"
