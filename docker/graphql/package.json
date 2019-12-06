@@ -1,17 +1,43 @@
 {
     "devDependencies": {
-        "@types/amqplib": "0.5.10",
-        "@types/node": "11.10.4",
-        "@types/pg": "7.4.13",
-        "@types/redis": "2.8.10"
+        "@types/amqplib": "^0.5.13",
+        "@types/body-parser": "^1.17.1",
+        "@types/cli-color": "^0.3.30",
+        "@types/express": "^4.17.2",
+        "@types/graphql": "^14.5.0",
+        "@types/graphql-relay": "^0.4.11",
+        "@types/jest": "^24.0.23",
+        "@types/node": "^10.17.5",
+        "@types/pg": "^7.11.2",
+        "@types/redis": "^2.8.14",
+        "jest": "^24.9.0",
+        "ts-jest": "^24.2.0",
+        "tsconfig-paths": "^3.9.0"
     },
     "dependencies": {
-        "amqplib": "0.5.3",
-        "pg": "7.8.1",
-        "redis": "2.8.0"
+        "amqplib": "^0.5.5",
+        "ansi-logger": "^4.3.0",
+        "body-parser": "^1.19.0",
+        "cli-color": "^2.0.0",
+        "express": "^4.17.1",
+        "express-graphql": "^0.9.0",
+        "graphql": "^14.5.8",
+        "graphql-playground-middleware-express": "^1.7.12",
+        "graphql-relay": "^0.6.0",
+        "graphql-tools": "^4.0.6",
+        "pg": "^7.14.0",
+        "redis": "^2.8.0",
+        "ts-node-dev": "^1.0.0-pre.43",
+        "tslib": "^1.10.0",
+        "typescript": "^3.7.3"
     },
     "license": "BSD-3-Clause",
-    "name": "docker-app-graphql",
+    "name": "@docker-stack/graphql",
     "private": true,
+    "scripts": {
+        "build": "tsc -p tsconfig.build.json",
+        "dev": "TS_NODE_PROJECT=tsconfig.json ts-node-dev --inspect=0.0.0.0:9229 --ignore-watch node_modules -r tsconfig-paths/register -- src/index.ts",
+        "start": "node build/index.js"
+    },
     "version": "1.0.0"
 }

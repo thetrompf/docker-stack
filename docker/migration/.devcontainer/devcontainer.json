@@ -1,0 +1,27 @@
+{
+	"name": "Migration",
+	"dockerFile": "Dockerfile",
+	"runArgs": [
+		"-u", "1000",
+		"--network",
+		"docker-stack_internal"
+	],
+	"appPort": [],
+	"postCreateCommand": "yarn install",
+	"settings": {
+		"terminal.integrated.shell.linux": "/bin/bash"
+	},
+	"extensions": [
+		"alefragnani.bookmarks",
+		"eamodio.gitlens",
+		"esbenp.prettier-vscode",
+		"kumar-harsh.graphql-for-vscode",
+		"ms-vscode.typescript-javascript-grammar",
+		"ms-vscode.vscode-typescript-tslint-plugin",
+		"orta.vscode-jest",
+		"pustelto.bracketeer",
+		"tyriar.sort-lines",
+		"v4run.transpose",
+		"wmaurer.change-case"
+	]
+}

@@ -7,14 +7,50 @@ function isPoolClient(obj: any): obj is pg.PoolClient {
     return false;
 }
 
+const sql = String.raw;
+
+enum QuotedIdentifierBrand {}
+type QuotedIdentifier = string & { '': QuotedIdentifierBrand };
+
+export function quoteIdentifier(str: string | IdentifierParts): QuotedIdentifier {
+    if (str.length === 0) {
+        throw new TypeError('Idenitifier must a length above 0');
+    }
+    if (typeof str === 'string' && str.indexOf('.') === -1) {
+        return `"${str}"` as QuotedIdentifier;
+    } else {
+        return (Array.isArray(str) ? str : str.split('.'))
+            .reduce(
+                (carry, item) => {
+                    carry.push(quoteIdentifier(item));
+                    return carry;
+                },
+                [] as QuotedIdentifier[],
+            )
+            .join('') as QuotedIdentifier;
+    }
+}
+
+type IdentifierParts = string | [string, string] | [string, string, string];
+type QuotedIdentifierParts =
+    | QuotedIdentifier
+    | [QuotedIdentifier, QuotedIdentifier]
+    | [QuotedIdentifier, QuotedIdentifier, QuotedIdentifier];
+export function identifierParts(identifier: string): IdentifierParts;
+export function identifierParts(identifier: QuotedIdentifier): QuotedIdentifierParts;
+export function identifierParts(identifier: string | QuotedIdentifier): IdentifierParts | QuotedIdentifierParts {
+    return identifier.split('.') as IdentifierParts | QuotedIdentifierParts;
+}
+
 export class Helper {
-    private db: pg.Client | pg.PoolClient;
+    public readonly db: pg.Client | pg.PoolClient;
 
     public constructor(db: pg.Client | pg.PoolClient) {
         this.db = db;
     }
 
     public executeQuery(sql: string, params?: any[]) {
+        console.debug(sql);
         return this.db.query(sql, params);
     }
 
@@ -32,16 +68,35 @@ export class Helper {
         }
     }
 
-    public async executeSingle(sql: string, params?: any[]) {
+    public async getOneOrNullResult(sql: string, params?: any[]) {
         const result = await this.executeQuery(sql, params);
         if (result.rowCount === 0) {
-            throw new Error('No rows returned');
+            return null;
         } else if (result.rowCount === 1) {
             return result.rows[0];
         } else {
             throw new Error(`Non-unique result - ${result.rowCount} rows returned`);
         }
     }
+
+    public async executeSingle(sql: string, params?: any[]) {
+        const result = await this.getOneOrNullResult(sql, params);
+        if (result == null) {
+            throw new Error('No rows returned');
+        } else {
+            return result;
+        }
+    }
+
+    public async schemaExists(schema: QuotedIdentifier): Promise<boolean> {
+        return (
+            (await this.getOneOrNullResult(sql`SELECT 1 FROM pg_catalog.pg_tables t WHERE t.schemaname = ?`, [
+                schema,
+            ])) != null
+        );
+    }
+
+    public async tableExists(_table: QuotedIdentifier | IdentifierParts | QuotedIdentifierParts) {}
 
     public begin(): Promise<void> {
         return this.executeUpdate('BEGIN', 0);

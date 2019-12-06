@@ -1,47 +1,26 @@
-import { readdir, createReadStream } from 'fs';
-import { pool, sql, param } from './db';
-import { Helper } from './helper';
-import { promisify } from 'util';
-import { createHash } from 'crypto';
-
-const readdirAsync = promisify(readdir);
-
-const sha1 = async (filePath: string): Promise<string> =>
-    new Promise((resolve, reject) => {
-        const hash = createHash('sha1');
-        const stream = createReadStream(filePath);
-        stream.on('error', reject);
-        stream.on('end', () => {
-            resolve(hash.digest('hex'));
-        });
-        stream.pipe(hash);
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const fs_1 = require("fs");
+const db_1 = require("./db");
+const helper_1 = require("./helper");
+const util_1 = require("util");
+const crypto_1 = require("crypto");
+const readdirAsync = util_1.promisify(fs_1.readdir);
+const sha1 = async (filePath) => new Promise((resolve, reject) => {
+    const hash = crypto_1.createHash('sha1');
+    const stream = fs_1.createReadStream(filePath);
+    stream.on('error', reject);
+    stream.on('end', () => {
+        resolve(hash.digest('hex'));
     });
-
-interface MigrationFile {
-    migrationPath: string;
-    sha1: string;
-}
-
-const findMigrationsOnFilesystem = () =>
-    readdirAsync('/data').then(files =>
-        Promise.all(
-            files.map(async file => ({
-                migrationPath: file,
-                sha1: await sha1('/data/' + file),
-            })),
-        ),
-    );
-
-const findMigrationsInDatabase = async (helper: Helper) => {
-    interface MigrationData {
-        area_name: string;
-        area_type: string;
-        migration_name: string;
-        run_at: string;
-        sha1: string;
-    }
-
-    const migrations = await sql`
+    stream.pipe(hash);
+});
+const findMigrationsOnFilesystem = () => readdirAsync('/data').then(files => Promise.all(files.map(async (file) => ({
+    migrationPath: file,
+    sha1: await sha1('/data/' + file),
+}))));
+const findMigrationsInDatabase = async (helper) => {
+    const migrations = await db_1.sql `
         SELECT
             mm.area_type,
             mm.area_name,
@@ -53,8 +32,7 @@ const findMigrationsInDatabase = async (helper: Helper) => {
         ORDER BY
             mm.run_at DESC,
             mm.migration_name DESC
-    `.execute<MigrationData>(helper.db);
-
+    `.execute(helper.db);
     return migrations.map(row => ({
         areaName: row.area_name,
         areaType: row.area_type,
@@ -62,23 +40,24 @@ const findMigrationsInDatabase = async (helper: Helper) => {
         runAt: row.run_at,
         sha1: row.sha1,
     }));
-}
-
-async function runInTransaction(helper: Helper, fn: () => Promise<void>): Promise<void> {
+};
+async function runInTransaction(helper, fn) {
     try {
-        console.debug('Begin transaction')
+        console.debug('Begin transaction');
         await helper.begin();
         console.debug('Run');
         await fn();
         console.debug('Commiting');
         await helper.commit();
-    } catch (e) {
+    }
+    catch (e) {
         console.error(e);
         try {
             console.info('Rolling back transaction');
             await helper.rollback();
             helper.release(e);
-        } catch (err) {
+        }
+        catch (err) {
             console.error('Could not rollback transaction');
             console.error(err);
             helper.release(err);
@@ -86,17 +65,14 @@ async function runInTransaction(helper: Helper, fn: () => Promise<void>): Promis
         process.exit(1);
     }
 }
-
-async function runUp(file: MigrationFile, helper: Helper): Promise<void> {
-    const migration = (await import('/data/' + file.migrationPath)) as Migration;
+async function runUp(file, helper) {
+    const migration = (await Promise.resolve().then(() => require('/data/' + file.migrationPath)));
     console.log(`    ${file.migrationPath}`);
     return runInTransaction(helper, async () => {
         await migration.up(helper);
-
-        const migrationNameParam = param('migration_name', file.migrationPath);
-        const sha1Param = param('sha1', file.sha1);
-
-        await sql`
+        const migrationNameParam = db_1.param('migration_name', file.migrationPath);
+        const sha1Param = db_1.param('sha1', file.sha1);
+        await db_1.sql `
             INSERT INTO
                 migration.migrations (
                     area_type,
@@ -114,17 +90,14 @@ async function runUp(file: MigrationFile, helper: Helper): Promise<void> {
         `.executeUpdate(helper.db, 1);
     });
 }
-
-async function runDown(file: MigrationFile, helper: Helper): Promise<void> {
-    const migration = (await import('/data/' + file.migrationPath)) as Migration;
+async function runDown(file, helper) {
+    const migration = (await Promise.resolve().then(() => require('/data/' + file.migrationPath)));
     console.log(`    ${file.migrationPath}`);
     return runInTransaction(helper, async () => {
         await migration.down(helper);
-
-        const migrationNameParam = param('migration_name', file.migrationPath);
-        const sha1Param = param('sha1', file.sha1);
-
-        await sql`
+        const migrationNameParam = db_1.param('migration_name', file.migrationPath);
+        const sha1Param = db_1.param('sha1', file.sha1);
+        await db_1.sql `
             DELETE FROM
                 migration.migrations mm
             WHERE
@@ -133,18 +106,12 @@ async function runDown(file: MigrationFile, helper: Helper): Promise<void> {
                 mm.migration_name = ${migrationNameParam} AND
                 mm.sha1 = ${sha1Param}
         `.executeUpdate(helper.db, 1);
-    })
+    });
 }
-
-const runAll = async (
-    migrations: MigrationFile[],
-    fn: (file: MigrationFile) => Promise<void>,
-): Promise<void> =>
-    Promise.all(migrations.map(fn))
-        .then(_ => void 0);
-
-async function ensureMigrationSchemaExist(helper: Helper) {
-    const schemaExists = await sql`
+const runAll = async (migrations, fn) => Promise.all(migrations.map(fn))
+    .then(_ => void 0);
+async function ensureMigrationSchemaExist(helper) {
+    const schemaExists = await db_1.sql `
         SELECT
             1
         FROM
@@ -152,16 +119,13 @@ async function ensureMigrationSchemaExist(helper: Helper) {
         WHERE
             t.schemaname = 'migration'
     `.getOneOrNull(helper.db) != null;
-
     if (schemaExists) {
         return;
     }
-
-    await sql`CREATE SCHEMA migration`.executeUpdate(helper.db);
+    await db_1.sql `CREATE SCHEMA migration`.executeUpdate(helper.db);
 }
-
-async function ensureMigrationsTableExist(helper: Helper) {
-    const tableExists = await sql`
+async function ensureMigrationsTableExist(helper) {
+    const tableExists = await db_1.sql `
         SELECT
             1
         FROM
@@ -169,12 +133,10 @@ async function ensureMigrationsTableExist(helper: Helper) {
         WHERE
             t.tablename = 'migrations'
     `.getOneOrNull(helper.db) != null;
-
     if (tableExists) {
         return;
     }
-
-    await sql`
+    await db_1.sql `
         CREATE TABLE
             migration.migrations (
                 id SERIAL PRIMARY KEY,
@@ -185,8 +147,7 @@ async function ensureMigrationsTableExist(helper: Helper) {
                 run_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
             )
     `.executeUpdate(helper.db);
-
-    await sql`
+    await db_1.sql `
         CREATE INDEX ON
             migration.migrations (
                 area_type,
@@ -195,16 +156,14 @@ async function ensureMigrationsTableExist(helper: Helper) {
                 run_at
             )
     `.executeUpdate(helper.db);
-
-    await sql`
+    await db_1.sql `
         CREATE INDEX ON
             migration.migrations (
                 migration_name,
                 run_at
             )
     `.executeUpdate(helper.db);
-
-    await sql`
+    await db_1.sql `
         CREATE INDEX ON
             migration.migrations (
                 run_at,
@@ -212,65 +171,56 @@ async function ensureMigrationsTableExist(helper: Helper) {
             )
     `.executeUpdate(helper.db);
 }
-
 async function main() {
-    let internHelper: Helper | null = null;
+    let helper1 = null;
     try {
-        const client = await pool.connect();
-        internHelper = new Helper(client);
-        await internHelper.begin();
-        await ensureMigrationSchemaExist(internHelper);
-        await ensureMigrationsTableExist(internHelper);
-        await internHelper.commit();
-    } catch (e) {
+        const client = await db_1.pool.connect();
+        helper1 = new helper_1.Helper(client);
+        await helper1.begin();
+        await ensureMigrationSchemaExist(helper1);
+        await ensureMigrationsTableExist(helper1);
+        await helper1.commit();
+    }
+    catch (e) {
         console.error(e);
-        if (internHelper != null) {
-            internHelper.release(e);
+        if (helper1 != null) {
+            helper1.release(e);
         }
         return process.exit(1);
     }
-
-    const helper = internHelper;
-
+    const helper = helper1;
     const action = process.argv[2] === 'down' ? 'down' : 'up';
-
     const filesystemMigrations = await findMigrationsOnFilesystem();
     const databaseMigrations = await findMigrationsInDatabase(helper);
-
-    const migrationsToRun =
-        action === 'down'
-            ? databaseMigrations.reduce((fms, dm) => {
-                const fm = filesystemMigrations.find(f => f.sha1 === dm.sha1);
-                if (fm != null) {
-                    fms.push(fm);
-                }
-                return fms;
-            }, [] as MigrationFile[])
-            : filesystemMigrations.filter(fm => databaseMigrations.find(dm => dm.sha1 === fm.sha1) == null);
-
+    const migrationsToRun = action === 'down'
+        ? databaseMigrations.reduce((fms, dm) => {
+            const fm = filesystemMigrations.find(f => f.sha1 === dm.sha1);
+            if (fm != null) {
+                fms.push(fm);
+            }
+            return fms;
+        }, [])
+        : filesystemMigrations.filter(fm => databaseMigrations.find(dm => dm.sha1 === fm.sha1) == null);
     if (migrationsToRun.length === 0) {
         console.info('Already up-to-date.');
         // helper.release();
-        console.log(pool.totalCount);
-        console.log(pool.idleCount);
-        console.log(pool.waitingCount);
+        console.log(db_1.pool.totalCount);
+        console.log(db_1.pool.idleCount);
+        console.log(db_1.pool.waitingCount);
         await helper.end();
         process.exit(0);
         return;
     }
-
     console.info(`${action === 'up' ? 'Running' : 'Undoing'} ${migrationsToRun.length} migration${migrationsToRun.length === 1 ? '' : 's'}`);
-
     await runAll(migrationsToRun, (file) => action === 'down' ? runDown(file, helper) : runUp(file, helper));
-
     // helper.release();
-    // console.log(pool.totalCount);
-    // console.log(pool.idleCount);
-    // console.log(pool.waitingCount);
+    console.log(db_1.pool.totalCount);
+    console.log(db_1.pool.idleCount);
+    console.log(db_1.pool.waitingCount);
     return helper.end();
 }
-
 main().catch(err => {
     console.error(err);
     process.exit(1);
 });
+//# sourceMappingURL=runner.js.map

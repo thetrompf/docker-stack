@@ -3,6 +3,10 @@
 DIR="$(cd -P "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" && pwd)"
 cd "$DIR"
 
-export PROJECT_ROOT="$(realpath "$DIR")"
+LOCAL_USER_ID="$(id -u)"
+PROJECT_ROOT="$(realpath "$DIR")"
+
+export LOCAL_USER_ID
+export PROJECT_ROOT
 
 exec docker-compose -f docker-compose.dev.yml "$@"

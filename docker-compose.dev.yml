@@ -41,14 +41,23 @@ services:
     env_file:
     - ./environment/postgres.env
     - ./environment/rabbitmq.env
+    environment:
+    - CLICOLOR_FORCE=1
+    - LOCAL_USER_ID
+    - LOGFORMAT=TEXT
     networks:
     - internal
+    - public
     ports:
-    - "3000"
-    - "9229:9229"
+    - "3000:3000"
+    - "9229"
     secrets:
     - postgres_password
     - rabbitmq_password
+    volumes:
+    - "${PROJECT_ROOT}/docker/graphql/build:/service/build:delegated"
+    - "${PROJECT_ROOT}/docker/graphql/src:/service/src:cached"
+    - "${PROJECT_ROOT}/docker/graphql/types:/service/types:cached"
 
   migration:
     build:
@@ -62,13 +71,21 @@ services:
     env_file:
     - ./environment/postgres.env
     - ./environment/rabbitmq.env
+    environment:
+    - LOCAL_USER_ID
     networks:
     - internal
+    - public
+    ports:
+    - "9229"
     secrets:
     - postgres_password
     - rabbitmq_password
     volumes:
     - "${PROJECT_ROOT}/docker/migration/migrations:/data:ro"
+    - "${PROJECT_ROOT}/docker/migration/build:/service/build:delegated"
+    - "${PROJECT_ROOT}/docker/migration/src:/service/src:cached"
+    - "${PROJECT_ROOT}/docker/migration/types:/service/types:cached"
 
   nginx:
     build:
@@ -92,7 +109,7 @@ services:
     networks:
     - internal
     ports:
-    - "5432"
+    - "5432:5432"
     secrets:
     - postgres_password
     volumes:

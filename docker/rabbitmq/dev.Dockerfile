@@ -1,4 +1,4 @@
-FROM rabbitmq:3.7.14-management-alpine
+FROM rabbitmq:3.8.1-management-alpine
 
 COPY custom-docker-entrypoint.sh /usr/local/bin/
 
